@@ -68,6 +68,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+// SafarSound
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+
 /**
  * Phone app "in call" screen.
  */
@@ -134,13 +139,77 @@ public class InCallActivity extends Activity {
      * Used to determine if a change in orientation has occurred.
      */
     private static int mCurrentOrientation = Configuration.ORIENTATION_UNDEFINED;
+    private SafarSound safarsound;
+    /**
+    * Created by Safarend on 30/07/15.
+    */
+    class SafarSound {
+	private int sound_level;
+	private final int chang_value_by = 4;
+	private final int max_volume = 76;
+	private final int min_volume = 50;
+	//private final String TAG = "SafarSound";
 
+	SafarSound() {
+	    //Log.i(TAG, "SafarSound constructor");
+	    try {
+		Process p = Runtime.getRuntime().exec("tinymix 53");
+		InputStream stdout = p.getInputStream();
+		byte[] buffer = new byte[25];
+
+		String volume_line = "";
+		int read;
+		while (true) {
+		    read = stdout.read(buffer);
+		    volume_line += new String(buffer, 0, read);
+		    if (read < 80) {
+			break;
+		    }
+		}
+		//Log.i(TAG, "SafarSound "+ volume_line);
+		sound_level = Integer.parseInt(volume_line.length() > 2 ? volume_line.substring(volume_line.length() - 2) : volume_line);
+		p.waitFor();
+	    } catch (Exception e) {
+		e.printStackTrace();
+	    }
+
+	}
+
+	public int currentVolume() {
+	    return sound_level;
+	}
+
+	public void Increase() {
+	    //Log.i(TAG, "SafarSound Increase");
+	    if (sound_level + chang_value_by < max_volume) {
+		try {
+		    sound_level = sound_level + chang_value_by;
+		    Process p = Runtime.getRuntime().exec("tinymix 53 "+ String.valueOf(sound_level));
+		} catch (IOException e) {
+		    e.printStackTrace();
+		}
+	    }
+	}
+
+	public void Decrease() {
+	   // Log.i(TAG, "SafarSound Decrease");
+	    if (sound_level - chang_value_by > min_volume) {
+		try {
+		    sound_level = sound_level - chang_value_by;
+		    Process p = Runtime.getRuntime().exec("tinymix 53 "+ String.valueOf(sound_level));
+
+		} catch (IOException e) {
+		    e.printStackTrace();
+		}
+	    }
+	}
+    }
     @Override
     protected void onCreate(Bundle icicle) {
         Log.d(this, "onCreate()...  this = " + this);
 
         super.onCreate(icicle);
-
+	safarsound = new SafarSound();
         // set this flag so this activity will stay in front of the keyguard
         // Have the WindowManager filter out touch events that are "too fat".
         int flags = WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
@@ -444,7 +513,11 @@ public class InCallActivity extends Activity {
                 return true;
 
             case KeyEvent.KEYCODE_VOLUME_UP:
+		safarsound.Increase();
+		return true;
             case KeyEvent.KEYCODE_VOLUME_DOWN:
+		safarsound.Decrease();
+		return true;            
             case KeyEvent.KEYCODE_VOLUME_MUTE:
                 // Ringer silencing handled by PhoneWindowManager.
                 break;
